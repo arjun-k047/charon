@@ -1,0 +1,20 @@
+.env
+AGENTS.md
+CLAUDE.md
+.claude/
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+.DS_Store
+*.log
+
+# sample malware/pcap artifacts used for local testing - never commit real samples
+samples/*
+!samples/.gitkeep
+
+# generated red-team attack/control files and the harness server log
+redteam/files/

@@ -1,0 +1,71 @@
+# Runs the test suite against a real PostgreSQL service and tesseract, and
+# checks that docker-compose.yml starts Postgres with the schema applied.
+# The Postgres and OCR tests skip themselves when either is missing, which
+# would let a broken environment pass silently, so any skipped test fails
+# the job.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: charon
+          POSTGRES_PASSWORD: charon
+          POSTGRES_DB: charon
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U charon -d charon"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
+      - run: pip install -r requirements.txt
+      # The tests use fake keys; no secrets are needed.
+      - run: cp .env.example .env
+      - name: Run tests and fail on any skip
+        run: |
+          set -o pipefail
+          python -m pytest -p no:cacheprovider -rs | tee pytest.log
+          # Only pytest's final "=== ... ===" summary line counts, not test output.
+          summary=$(grep -E '^=+ .+ =+$' pytest.log | tail -n 1)
+          if grep -Eq '\b[1-9][0-9]* skipped' <<< "$summary"; then
+            echo "::error::tests were skipped: $summary"
+            exit 1
+          fi
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose up -d --wait
+      - name: Check the schema was applied
+        run: >-
+          docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U charon -d charon -c
+          "DO \$\$ BEGIN
+          IF (SELECT count(*) FROM information_schema.tables
+              WHERE table_schema = 'public' AND table_name IN ('investigations', 'tool_calls')) <> 2
+          OR (SELECT count(*) FROM information_schema.columns
+              WHERE table_schema = 'public' AND table_name = 'investigations'
+              AND column_name IN ('error', 'model')) <> 2
+          THEN RAISE EXCEPTION 'schema check failed'; END IF;
+          END \$\$;"
+      - if: always()
+        run: docker compose down -v

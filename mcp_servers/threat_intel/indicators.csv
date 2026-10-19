@@ -1,0 +1,20 @@
+# Charon threat_intel local indicator list.
+# STATIC SNAPSHOT, STALE BY DESIGN - this is not a live feed and is never
+# refreshed automatically. It stands in for a real threat-intel source so the
+# tool can be exercised offline and deterministically.
+#
+# Sources:
+# - EICAR: industry-standard harmless antivirus test file (https://www.eicar.org/download-anti-malware-testfile/).
+#   Hashes are of the 68-byte EICAR test string.
+# - urlhaus: copied verbatim from the abuse.ch URLhaus public "recent URLs" CSV dump
+#   (https://urlhaus.abuse.ch/downloads/csv_recent/), dump dated 2026-09-30 10:05:15 UTC.
+#   These URLs were reported as malware download sites and are likely offline by now.
+#   Do not visit them.
+#
+indicator,type,threat,source
+44d88612fea8a8f36de82e1278abb02f,md5,EICAR-Test-File (harmless test signature),https://www.eicar.org/download-anti-malware-testfile/
+3395856ce81f2b7382dee72602f798b642f14140,sha1,EICAR-Test-File (harmless test signature),https://www.eicar.org/download-anti-malware-testfile/
+275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f,sha256,EICAR-Test-File (harmless test signature),https://www.eicar.org/download-anti-malware-testfile/
+http://fujeigroup.com:8888/web/img_200150.png,url,malware_download (AsyncRAT),https://urlhaus.abuse.ch/url/3925459/
+http://115.50.105.81:59352/i,url,malware_download (mirai),https://urlhaus.abuse.ch/url/3925437/
+http://103.252.219.217:50029/i,url,malware_download (Mozi),https://urlhaus.abuse.ch/url/3925438/
