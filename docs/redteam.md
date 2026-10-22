@@ -57,9 +57,10 @@ where the reason is the HTTP status and the provider's message,
 `unexpected response (not a chat completion)`, `no response within N s`,
 or the connection error. Incomplete provider settings (an `LLM_*` variable
 unset or blank while another is set, or, with none set, an unset or blank
-`NVIDIA_API_KEY`), or a set `OPENAI_CUSTOM_HEADERS`, fail the preflight with
-a reason that names the variable, before any request is sent. Every
-configured key, and any prefix of it 8 or more characters long, is replaced
+`NVIDIA_API_KEY`, `NVIDIA_BASE_URL` or `NVIDIA_MODEL`), or a set
+`OPENAI_CUSTOM_HEADERS`, fail the preflight with a reason that names the
+variable, before any request is sent. Every configured key, and any
+prefix of it 8 or more characters long, is replaced
 by `[key]` before whitespace is collapsed and the reason is cut to 300
 characters. `--preflight-timeout` sets a total
 deadline for the whole exchange, redirects included (default 30 s), so a
