@@ -112,7 +112,9 @@ all-or-nothing:
 
 Only NVIDIA NIM has been tested live.
 The API refuses to start if the key is unset or blank, or if the `LLM_*`
-settings are incomplete; the error names each missing variable.
+settings are incomplete; the error names each missing variable. With the
+`NVIDIA_*` settings, an unset or blank `NVIDIA_BASE_URL` or `NVIDIA_MODEL`
+does not stop startup; each investigation then fails with an error naming it.
 It also refuses to start while `OPENAI_CUSTOM_HEADERS` is set: the OpenAI SDK
 adds those headers to every request, and an `Authorization` line among them
 would replace the provider key.
@@ -133,10 +135,11 @@ Run them inside the activated virtualenv: it is the one that has
 the `app` package imports (bare `pytest` fails collection with
 `ModuleNotFoundError: No module named 'app'`).
 
-The tests run on Linux only (one reads `/proc`). `.env` must exist before
-running them (copy `.env.example`), because `app/db.py` reads `DATABASE_URL`
-on import. The tests build several throwaway databases (`charon_test`,
-`charon_test_migration`, `charon_test_redaction` and `charon_test_rescore`)
+The tests run on Linux only (a helper used by four agent tests reads
+`/proc`). `.env` must exist before running them (copy `.env.example`),
+because `app/db.py` reads `DATABASE_URL` on import. The tests build several
+throwaway databases (`charon_test`, `charon_test_migration`,
+`charon_test_redaction` and `charon_test_rescore`)
 on the server in `DATABASE_URL`, connecting with its credentials as an
 admin that can create and drop databases, and drop them afterwards; these
 tests are skipped if PostgreSQL is unreachable. The OCR tests are skipped
@@ -236,8 +239,11 @@ payload-level analysis was not performed.
   redacted from stored and logged text, but not from tool output sent to the
   model: the tool servers never receive the key, so it can only appear there
   if a submitted file contains it, and then it is the submitter's own secret.
-- **Tool output is not truncated.** Very large OCR text or pcap summaries are
-  passed to the model in full and could exceed its context window.
+- **Tool output is only partly capped.** PDF page text and hidden-text
+  findings are capped, and each list in a pcap summary holds at most 10
+  entries, but OCR text, PDF metadata, EXIF, OLE stream lists and
+  embedded-file lists are passed to the model in full and could exceed its
+  context window.
 - **No database connect timeout.** Connections are opened with
   `psycopg.connect(DATABASE_URL)` and no timeout, so an unreachable database
   can stall a request instead of failing fast.
