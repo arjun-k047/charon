@@ -17,8 +17,10 @@ regular file raises `ValueError`.
 - `sandbox/` exposes `analyze_file(path)`. Page text is kept for the first
   10 pages, at most 2,000 characters per page and 6,000 in total; a page
   whose content streams exceed 100,000 bytes is skipped. Hidden-text
-  findings are capped at 20, 300 characters each. Every cap that applies
-  is reported as `truncated` or `skipped` in the output.
+  findings are capped at 20, 300 characters each. The page-text caps and
+  skipped pages are reported as `truncated` or `skipped`, and the 20-finding
+  cap as `truncated` against `total`; the 300-character cut on each finding
+  is not flagged.
 - `ocr/` exposes `extract_text(path)`. An image is OCR'd directly; for a
   PDF, only images already embedded in its pages are OCR'd. A file that is
   neither returns empty text, and a PDF that fails to parse returns the
