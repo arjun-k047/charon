@@ -112,7 +112,7 @@ different credentials.
 - The image runs a single uvicorn worker, and Compose mounts `samples/` read-only.
 - Compose applies `db/schema.sql` only when the data volume is new; `docker compose down -v` deletes the data so the next start re-applies it.
 - The bind mounts use `:z` for SELinux hosts such as Fedora, which relabels `db/schema.sql` and `samples/` on the host.
-- The Compose setup has been tested only with docker-compose 5.6.0 on podman.
+- CI runs `docker compose up -d --wait` on GitHub Actions' Docker Engine with placeholder provider settings and checks `/health` and the schema; local runs used docker-compose 5.6.0 on podman.
 
 Full list: [docs/design.md](docs/design.md#known-limitations).
 
