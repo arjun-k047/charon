@@ -1,0 +1,16 @@
+.env
+.git
+.venv
+venv
+AGENTS.md
+CLAUDE.md
+.claude
+samples
+redteam
+tests
+db
+**/__pycache__
+**/*.pyc
+.pytest_cache
+**/*.log
+**/*.md

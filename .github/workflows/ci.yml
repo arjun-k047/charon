@@ -1,5 +1,6 @@
 # Runs the test suite against a real PostgreSQL service and tesseract, and
-# checks that docker-compose.yml starts Postgres with the schema applied.
+# checks that docker-compose.yml starts Postgres with the schema applied and
+# the API healthy.
 # The Postgres and OCR tests skip themselves when either is missing, which
 # would let a broken environment pass silently, so any skipped test fails
 # the job.
@@ -55,7 +56,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The app refuses to start without provider settings; these placeholders
+      # satisfy that check and are never sent anywhere.
+      - name: Write placeholder provider settings
+        run: |
+          cat > .env <<'EOF'
+          LLM_API_KEY=placeholder
+          LLM_BASE_URL=https://example.invalid/v1
+          LLM_MODEL=placeholder
+          EOF
       - run: docker compose up -d --wait
+      - name: Check the API is healthy
+        run: curl -fsS http://127.0.0.1:8000/health
       - name: Check the schema was applied
         run: >-
           docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U charon -d charon -c

@@ -2,7 +2,7 @@
 # DATABASE_URL in .env.example; never reuse them anywhere reachable.
 services:
   postgres:
-    image: postgres:16
+    image: docker.io/library/postgres:16
     environment:
       POSTGRES_USER: charon
       POSTGRES_PASSWORD: charon
@@ -12,12 +12,34 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       # Runs only when the data volume is empty.
-      - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro,z
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U charon -d charon"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U charon -d charon"]
       interval: 5s
       timeout: 5s
       retries: 10
+
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    # Provider settings pass through exactly as written in .env.
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://charon:charon@postgres:5432/charon
+    volumes:
+      - ./samples:/app/samples:ro,z
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
 volumes:
   pgdata:
