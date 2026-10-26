@@ -53,15 +53,39 @@ Limits: one model, 8 runs per case, one injection phrasing and keyword-based det
 
 ## Quickstart
 
-Needs Python 3.14, Docker Compose and the `tesseract` binary. Provider options and the `NVIDIA_*` fallback:
+Needs Docker Compose. Provider options and the `NVIDIA_*` fallback:
 [docs/design.md](docs/design.md#provider-settings).
 
 ```bash
 git clone https://github.com/arjun-k047/charon.git && cd charon
-docker compose up -d --wait   # PostgreSQL on 127.0.0.1:5432; loads db/schema.sql only into a new volume, so re-apply it by hand after schema changes
+cp .env.example .env   # set LLM_API_KEY, LLM_BASE_URL and LLM_MODEL
+cp suspicious.pdf samples/ && chmod 644 samples/suspicious.pdf
+docker compose up --wait   # API on 127.0.0.1:8000, PostgreSQL on 127.0.0.1:5432
+# submit the file, then poll with the returned id
+curl -s -X POST http://127.0.0.1:8000/investigations \
+     -H 'content-type: application/json' \
+     -d '{"submitted_input": "suspicious.pdf", "input_type": "file"}'
+curl -s http://127.0.0.1:8000/investigations/<id>
+```
+
+The API runs as a non-root user, so files in `samples/` must be world-readable (mode 644) and the
+directory itself traversable (mode 755).
+
+Tests: `python -m pytest -p no:cacheprovider` (390 tests, several minutes; requirements and database setup in
+[docs/design.md](docs/design.md#tests)). CI runs them on pushes to main and on pull requests.
+
+<details>
+<summary>Without Docker</summary>
+
+Needs Python 3.14 and the `tesseract` binary.
+
+```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # set LLM_API_KEY, LLM_BASE_URL and LLM_MODEL
+# PostgreSQL in podman (credentials match .env.example's DATABASE_URL)
+podman run -d --name charon-pg -e POSTGRES_USER=charon -e POSTGRES_PASSWORD=charon -e POSTGRES_DB=charon -p 127.0.0.1:5432:5432 docker.io/library/postgres:16
+podman exec -i charon-pg psql -v ON_ERROR_STOP=1 -U charon -d charon < db/schema.sql
 uvicorn app.main:app
 # in a second shell: submit the synthetic phishing image, then poll with the returned id
 python -m redteam.make_files
@@ -70,18 +94,6 @@ curl -s -X POST http://127.0.0.1:8000/investigations \
      -H 'content-type: application/json' \
      -d '{"submitted_input": "control_image_phish.png", "input_type": "file"}'
 curl -s http://127.0.0.1:8000/investigations/<id>
-```
-
-Tests: `python -m pytest -p no:cacheprovider` (390 tests, several minutes; requirements and database setup in
-[docs/design.md](docs/design.md#tests)). CI runs them on pushes to main and on pull requests.
-
-<details>
-<summary>Without Compose</summary>
-
-```bash
-# PostgreSQL in podman (credentials match .env.example's DATABASE_URL)
-podman run -d --name charon-pg -e POSTGRES_USER=charon -e POSTGRES_PASSWORD=charon -e POSTGRES_DB=charon -p 127.0.0.1:5432:5432 docker.io/library/postgres:16
-podman exec -i charon-pg psql -v ON_ERROR_STOP=1 -U charon -d charon < db/schema.sql
 ```
 
 The `charon`/`charon` credentials are for a local throwaway container only:
@@ -97,6 +109,10 @@ different credentials.
 - The citation check verifies which tool a finding cites, not whether its text matches that tool's output.
 - Assumes a single server process and an intake directory writable only by trusted users.
 - Only NVIDIA NIM has been tested live, and only Python 3.14 has been tested.
+- The image runs a single uvicorn worker, and Compose mounts `samples/` read-only.
+- Compose applies `db/schema.sql` only when the data volume is new; `docker compose down -v` deletes the data so the next start re-applies it.
+- The bind mounts use `:z` for SELinux hosts such as Fedora, which relabels `db/schema.sql` and `samples/` on the host.
+- The Compose setup has been tested only with docker-compose 5.6.0 on podman.
 
 Full list: [docs/design.md](docs/design.md#known-limitations).
 
